@@ -1,5 +1,7 @@
 # Oasis 500M
 
+---
+
 ![](./media/arch.png)
 
 ![](./media/thumb.png)
@@ -18,6 +20,8 @@ cd open-oasis
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 # Install other dependencies
 pip install einops diffusers timm av
+# Install the better tqdm
+pip install tinygrad
 ```
 
 ## Download the model weights
