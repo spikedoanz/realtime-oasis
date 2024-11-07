@@ -7,7 +7,8 @@ from dit import DiT_models
 from vae import VAE_models
 from torchvision.io import read_video, write_video
 from utils import load_prompt, load_actions, sigmoid_beta_schedule
-from tqdm import tqdm
+from tinygrad.helpers import tqdm
+from time import time
 from einops import rearrange
 from torch import autocast
 from safetensors.torch import load_model
@@ -73,7 +74,9 @@ def main(args):
     alphas_cumprod = rearrange(alphas_cumprod, "T -> T 1 1 1")
 
     # sampling loop
-    for i in tqdm(range(n_prompt_frames, total_frames)):
+    frame_times = []
+    for i in (progress:=tqdm(range(n_prompt_frames, total_frames))):
+        frame_time = time() 
         chunk = torch.randn((B, 1, *x.shape[-3:]), device=device)
         chunk = torch.clamp(chunk, -noise_abs_max, +noise_abs_max)
         x = torch.cat([x, chunk], dim=1)
@@ -112,6 +115,8 @@ def main(args):
             # get frame prediction
             x_pred = alphas_cumprod[t_next].sqrt() * x_start + x_noise * (1 - alphas_cumprod[t_next]).sqrt()
             x[:, -1:] = x_pred[:, -1:]
+        frame_times.append(time() - frame_time)
+        progress.set_description(f"Seconds per frame: {frame_times[-1]}")
 
     # vae decoding
     x = rearrange(x, "b t c h w -> (b t) (h w) c")
@@ -124,6 +129,7 @@ def main(args):
     x = (x * 255).byte()
     write_video(args.output_path, x[0].cpu(), fps=args.fps)
     print(f"generation saved to {args.output_path}.")
+    print(f"Average seconds per frame: {sum(frame_times) / len(frame_times)}")
 
 if __name__ == "__main__":
     parse = argparse.ArgumentParser()
